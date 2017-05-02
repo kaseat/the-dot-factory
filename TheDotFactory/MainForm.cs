@@ -13,7 +13,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
@@ -274,174 +273,6 @@ namespace TheDotFactory
 
             // apply font to all appropriate places
             updateSelectedFont(Properties.Settings.Default.InputFont);
-        }
-
-        // try to parse character range
-        bool characterRangePointParse(string rangePointString, ref int rangePoint)
-        {
-            // trim the string
-            rangePointString = rangePointString.Trim();
-
-            // try to convert
-            try
-            {
-                // check if 0x is start of range
-                if (rangePointString.Substring(0, 2) == "0x")
-                {
-                    // remove 0x
-                    rangePointString = rangePointString.Substring(2, rangePointString.Length - 2);
-
-                    // do the parse
-                    rangePoint = Int32.Parse(rangePointString, System.Globalization.NumberStyles.HexNumber);
-                }
-                else
-                {
-                    // do the parse
-                    rangePoint = Int32.Parse(rangePointString);
-                }
-            }
-            catch
-            {
-                // error converting
-                return false;
-            }
-
-            // success
-            return true;
-        }
-
-        // expand and remove character ranges ( look for << x - y >> )
-        void expandAndRemoveCharacterRanges(ref string inputString)
-        {
-            // create the search pattern
-            //String searchPattern = @"<<.*-.*>>";
-            String searchPattern = @"<<(?<rangeStart>.*?)-(?<rangeEnd>.*?)>>";
-
-            // create the regex
-            Regex regex = new Regex(searchPattern, RegexOptions.Multiline);
-
-            // get matches
-            MatchCollection regexMatches = regex.Matches(inputString);
-
-            // holds the number of characters removed
-            int charactersRemoved = 0;
-
-            // for each match
-            foreach (Match regexMatch in regexMatches)
-            {
-                // get range start and end
-                int rangeStart = 0, rangeEnd = 0;
-                
-                // try to parse ranges
-                if (characterRangePointParse(regexMatch.Groups["rangeStart"].Value, ref rangeStart) &&
-                    characterRangePointParse(regexMatch.Groups["rangeEnd"].Value, ref rangeEnd))
-                {
-                    // remove this from the string
-                    inputString = inputString.Remove(regexMatch.Index - charactersRemoved, regexMatch.Length);
-
-                    // save the number of chars removed so that we can fixup index (the index
-                    // of the match changes as we remove characters)
-                    charactersRemoved += regexMatch.Length;
-
-                    // create a string from these values
-                    for (int charIndex = rangeStart; charIndex <= rangeEnd; ++charIndex)
-                    {
-                        // shove this character to a unicode char container
-                        char unicodeChar = (char)charIndex;
-
-                        // add this to the string
-                        inputString += unicodeChar;
-                    }
-                }
-            }
-        }
-
-        // get the characters we need to generate
-        string getCharactersToGenerate()
-        {
-            string inputText = txtInputText.Text;
-
-            //
-            // Expand and remove all ranges from the input text (look for << x - y >>
-            //
-
-            // espand the ranges into the input text
-            expandAndRemoveCharacterRanges(ref inputText);
-            
-            //
-            // iterate through the inputted text and shove to sorted string, removing all duplicates
-            //
-
-            // sorted list for insertion/duplication removal
-            SortedList<char, char> characterList = new SortedList<char, char>();
-
-            // iterate over the characters in the textbox
-            for (int charIndex = 0; charIndex < inputText.Length; ++charIndex)
-            {
-                // get teh char
-                char insertionCandidateChar = inputText[charIndex];
-
-                // insert the char, if not already in the list and if not space ()
-                if (!characterList.ContainsKey(insertionCandidateChar))
-                {
-                    // check if space character
-                    if (insertionCandidateChar == ' ' && !m_outputConfig.generateSpaceCharacterBitmap)
-                    {
-                        // skip - space is not encoded rather generated dynamically by the driver
-                        continue;
-                    }
-
-                    // dont generate newlines
-                    if (insertionCandidateChar == '\n' || insertionCandidateChar == '\r')
-                    {
-                        // no such characters
-                        continue;
-                    }
-
-                    // not in list, add
-                    characterList.Add(inputText[charIndex], ' ');
-                }
-            }
-
-            // now output the sorted list to a string
-            string characterListString = "";
-
-            // iterate over the sorted characters to create the string
-            foreach (char characterKey in characterList.Keys)
-            {
-                // add to string
-                characterListString += characterKey;
-            }
-
-            // return the character
-            return characterListString;
-        }
-
-        // convert a letter to bitmap
-        private void convertCharacterToBitmap(char character, Font font, out Bitmap outputBitmap, Rectangle largestBitmap)
-        {
-            // get the string
-            string letterString = character.ToString();
-
-            // create bitmap, sized to the correct size
-            outputBitmap = new Bitmap((int)largestBitmap.Width, (int)largestBitmap.Height);
-
-            // create grahpics entity for drawing
-            Graphics gfx = Graphics.FromImage(outputBitmap);
-
-            // disable anti alias
-            gfx.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
-
-            // draw centered text
-            Rectangle bitmapRect = new System.Drawing.Rectangle(0, 0, outputBitmap.Width, outputBitmap.Height);
-
-            // Set format of string.
-            StringFormat drawFormat = new StringFormat();
-            drawFormat.Alignment = StringAlignment.Center;
-            
-            // draw the character
-            gfx.FillRectangle(Brushes.White, bitmapRect);
-            gfx.DrawString(letterString, font, Brushes.Black, bitmapRect, drawFormat);
         }
 
         // returns whether a bitmap column is empty (empty means all is back color)
@@ -809,41 +640,22 @@ namespace TheDotFactory
             }
         }
 
-        // get widest bitmap
-        Rectangle getLargestBitmapFromCharInfo(CharacterGenerationInfo[] charInfoArray)
-        {
-            // largest rect
-            Rectangle largestRect = new Rectangle(0, 0, 0, 0);
-
-            // iterate through chars
-            for (int charIdx = 0; charIdx < charInfoArray.Length; ++charIdx)
-            {
-                // get the string of the characer
-                string letterString = charInfoArray[charIdx].character.ToString();
-                
-                // measure the size of teh character in pixels
-                Size stringSize = TextRenderer.MeasureText(letterString, charInfoArray[charIdx].fontInfo.font);
-
-                // check if larger
-                largestRect.Height = Math.Max(largestRect.Height, stringSize.Height);
-                largestRect.Width = Math.Max(largestRect.Width, stringSize.Width);
-            }
-
-            // return largest
-            return largestRect;
-        }
-
         // populate the font info
         private FontInfo populateFontInfo(Font font)
         {
             // the font information
-            FontInfo fontInfo = new FontInfo();
+            var fontInfo = new FontInfo
+            {
+                generatedChars = new String(txtInputText.Text.ToCharArray()
+                    .Where(x => (m_outputConfig.generateSpaceCharacterBitmap || x != ' ') && x != '\n' && x != '\r')
+                    .OrderBy(x => x)
+                    .Distinct()
+                    .ToArray()),
+                font = font
+            };
 
             // get teh characters we need to generate from the input text, removing duplicates
-            fontInfo.generatedChars = getCharactersToGenerate();
-
             // set font into into
-            fontInfo.font = font;
 
             // array holding all bitmaps and info per character
             fontInfo.characters = new CharacterGenerationInfo[fontInfo.generatedChars.Length];
@@ -854,19 +666,19 @@ namespace TheDotFactory
             for (int charIdx = 0; charIdx < fontInfo.generatedChars.Length; ++charIdx)
             {
                 // create char info entity
-                fontInfo.characters[charIdx] = new CharacterGenerationInfo();
-
-                // point back to teh font
-                fontInfo.characters[charIdx].fontInfo = fontInfo;
-
-                // set the character
-                fontInfo.characters[charIdx].character = fontInfo.generatedChars[charIdx];
+                fontInfo.characters[charIdx] = new CharacterGenerationInfo
+                {
+                    fontInfo = fontInfo,
+                    character = fontInfo.generatedChars[charIdx]
+                };
             }
             
             //
             // Find the widest bitmap size we are going to draw
             //
-            Rectangle largestBitmap = getLargestBitmapFromCharInfo(fontInfo.characters);
+            var largestBitmap = new Rectangle(0, 0,
+                fontInfo.characters.Max(x => TextRenderer.MeasureText(x.character.ToString(), x.fontInfo.font).Width),
+                fontInfo.characters.Max(x => TextRenderer.MeasureText(x.character.ToString(), x.fontInfo.font).Height));
             
             //
             // create bitmaps per characater
@@ -875,10 +687,30 @@ namespace TheDotFactory
             // iterate over characters
             for (int charIdx = 0; charIdx < fontInfo.generatedChars.Length; ++charIdx)
             {
-                // generate the original bitmap for the character
-                convertCharacterToBitmap(fontInfo.generatedChars[charIdx], 
-                                         font, 
-                                         out fontInfo.characters[charIdx].bitmapOriginal, largestBitmap);
+                // get the string
+                string letterString = fontInfo.generatedChars[charIdx].ToString();
+
+                // create bitmap, sized to the correct size
+                var 
+                outputBitmap = new Bitmap((int)largestBitmap.Width, (int)largestBitmap.Height);
+
+                // create grahpics entity for drawing
+                Graphics gfx = Graphics.FromImage(outputBitmap);
+
+                // disable anti alias
+                gfx.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
+
+                // draw centered text
+                Rectangle bitmapRect = new System.Drawing.Rectangle(0, 0, outputBitmap.Width, outputBitmap.Height);
+                fontInfo.characters[charIdx].bitmapOriginal = outputBitmap;
+
+                // Set format of string.
+                StringFormat drawFormat = new StringFormat();
+                drawFormat.Alignment = StringAlignment.Center;
+
+                // draw the character
+                gfx.FillRectangle(Brushes.White, bitmapRect);
+                gfx.DrawString(letterString, fontInfo.font, Brushes.Black, bitmapRect, drawFormat);
 
                 // save
                 // fontInfo.characters[charIdx].bitmapOriginal.Save(String.Format("C:/bms/{0}.bmp", fontInfo.characters[charIdx].character));

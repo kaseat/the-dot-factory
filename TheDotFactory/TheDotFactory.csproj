@@ -78,6 +78,8 @@
     <Compile Include="AboutForm.Designer.cs">
       <DependentUpon>AboutForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="CharInfo.cs" />
+    <Compile Include="FontInfo.cs" />
     <Compile Include="InputBox.cs">
       <SubType>Form</SubType>
     </Compile>

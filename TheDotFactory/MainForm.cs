@@ -20,6 +20,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -640,81 +641,34 @@ namespace TheDotFactory
             }
         }
 
+
         // populate the font info
         private FontInfo populateFontInfo(Font font)
         {
+            var fntInf = new TheDotFactory.FontInfo(txtInputText.Text, font, m_outputConfig.generateSpaceCharacterBitmap);
+
             // the font information
             var fontInfo = new FontInfo
             {
-                generatedChars = new String(txtInputText.Text.ToCharArray()
-                    .Where(x => (m_outputConfig.generateSpaceCharacterBitmap || x != ' ') && x != '\n' && x != '\r')
-                    .OrderBy(x => x)
-                    .Distinct()
-                    .ToArray()),
-                font = font
+                generatedChars = new String(fntInf.CharInfos.Select(x=>x.Character).ToArray()),
+                font = font,
+                characters = new CharacterGenerationInfo[fntInf.CharInfos.Length]
             };
 
-            // get teh characters we need to generate from the input text, removing duplicates
-            // set font into into
 
             // array holding all bitmaps and info per character
-            fontInfo.characters = new CharacterGenerationInfo[fontInfo.generatedChars.Length];
 
-            //
-            // init char infos
-            //
-            for (int charIdx = 0; charIdx < fontInfo.generatedChars.Length; ++charIdx)
+            for (var i = 0; i < fntInf.CharInfos.Length; i++)
             {
                 // create char info entity
-                fontInfo.characters[charIdx] = new CharacterGenerationInfo
+                fontInfo.characters[i] = new CharacterGenerationInfo
                 {
                     fontInfo = fontInfo,
-                    character = fontInfo.generatedChars[charIdx]
+                    character = fntInf.CharInfos[i].Character,
+                    bitmapOriginal = fntInf.CharInfos[i].BitmapOriginal
                 };
             }
-            
-            //
-            // Find the widest bitmap size we are going to draw
-            //
-            var largestBitmap = new Rectangle(0, 0,
-                fontInfo.characters.Max(x => TextRenderer.MeasureText(x.character.ToString(), x.fontInfo.font).Width),
-                fontInfo.characters.Max(x => TextRenderer.MeasureText(x.character.ToString(), x.fontInfo.font).Height));
-            
-            //
-            // create bitmaps per characater
-            //
 
-            // iterate over characters
-            for (int charIdx = 0; charIdx < fontInfo.generatedChars.Length; ++charIdx)
-            {
-                // get the string
-                string letterString = fontInfo.generatedChars[charIdx].ToString();
-
-                // create bitmap, sized to the correct size
-                var 
-                outputBitmap = new Bitmap((int)largestBitmap.Width, (int)largestBitmap.Height);
-
-                // create grahpics entity for drawing
-                Graphics gfx = Graphics.FromImage(outputBitmap);
-
-                // disable anti alias
-                gfx.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
-
-                // draw centered text
-                Rectangle bitmapRect = new System.Drawing.Rectangle(0, 0, outputBitmap.Width, outputBitmap.Height);
-                fontInfo.characters[charIdx].bitmapOriginal = outputBitmap;
-
-                // Set format of string.
-                StringFormat drawFormat = new StringFormat();
-                drawFormat.Alignment = StringAlignment.Center;
-
-                // draw the character
-                gfx.FillRectangle(Brushes.White, bitmapRect);
-                gfx.DrawString(letterString, fontInfo.font, Brushes.Black, bitmapRect, drawFormat);
-
-                // save
-                // fontInfo.characters[charIdx].bitmapOriginal.Save(String.Format("C:/bms/{0}.bmp", fontInfo.characters[charIdx].character));
-            }
 
             //
             // iterate through all bitmaps and find the tightest common border. only perform

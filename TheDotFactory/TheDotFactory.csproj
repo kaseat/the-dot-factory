@@ -78,7 +78,9 @@
     <Compile Include="AboutForm.Designer.cs">
       <DependentUpon>AboutForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="BitmapHelpers.cs" />
     <Compile Include="CharInfo.cs" />
+    <Compile Include="CropStyle.cs" />
     <Compile Include="FontInfo.cs" />
     <Compile Include="InputBox.cs">
       <SubType>Form</SubType>
@@ -89,6 +91,7 @@
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Config\OutputConfig.cs" />
     <Compile Include="OutputConfigurationForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -96,8 +99,10 @@
       <DependentUpon>OutputConfigurationForm.cs</DependentUpon>
     </Compile>
     <Compile Include="OutputConfigurationManager.cs" />
+    <Compile Include="Config\PaddingRemoval.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TmpHelpers.cs" />
     <EmbeddedResource Include="AboutForm.resx">
       <DependentUpon>AboutForm.cs</DependentUpon>
       <SubType>Designer</SubType>

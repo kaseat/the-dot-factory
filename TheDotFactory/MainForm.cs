@@ -23,6 +23,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using TheDotFactory.Config;
 
 namespace TheDotFactory
 {
@@ -356,27 +357,6 @@ namespace TheDotFactory
             }
         }
 
-        // iterate through the original bitmaps and find the tightest common border
-        private void findTightestCommonBitmapBorder(CharacterGenerationInfo[] charInfoArray,
-                                                    ref BitmapBorder tightestBorder)
-        {
-            // iterate through bitmaps
-            for (int charIdx = 0; charIdx < charInfoArray.Length; ++charIdx)
-            {
-                // create a border
-                BitmapBorder bitmapBorder = new BitmapBorder();
-
-                // get the bitmaps border
-                getBitmapBorder(charInfoArray[charIdx].bitmapOriginal, bitmapBorder);
-
-                // check if we need to loosen up the tightest border
-                tightestBorder.leftX = Math.Min(bitmapBorder.leftX, tightestBorder.leftX);
-                tightestBorder.topY = Math.Min(bitmapBorder.topY, tightestBorder.topY);
-                tightestBorder.rightX = Math.Max(bitmapBorder.rightX, tightestBorder.rightX);
-                tightestBorder.bottomY = Math.Max(bitmapBorder.bottomY, tightestBorder.bottomY);
-
-            }
-        }
 
         // get rotate flip type according to config
         private RotateFlipType getOutputRotateFlipType()
@@ -645,9 +625,20 @@ namespace TheDotFactory
         // populate the font info
         private FontInfo populateFontInfo(Font font)
         {
-            var fntInf = new TheDotFactory.FontInfo(txtInputText.Text, font, m_outputConfig.generateSpaceCharacterBitmap);
+            //Get necessary configurations.
+            var cfg = new OutputConfig
+            {
+                OutputFont = font,
+                HorizontalPaddingRemove = m_outputConfig.paddingRemovalVertical.ToPddRem(),
+                VerticalPaddingRemove = m_outputConfig.paddingRemovalHorizontal.ToPddRem(),
+                SpaceGeneration = m_outputConfig.generateSpaceCharacterBitmap
+            };
 
-            // the font information
+            // Init our FontInfo.
+            var fntInf = new TheDotFactory.FontInfo(txtInputText.Text, cfg);
+
+
+            // Fill original missing fields in. 
             var fontInfo = new FontInfo
             {
                 generatedChars = new String(fntInf.CharInfos.Select(x=>x.Character).ToArray()),
@@ -656,54 +647,18 @@ namespace TheDotFactory
             };
 
 
-            // array holding all bitmaps and info per character
-
             for (var i = 0; i < fntInf.CharInfos.Length; i++)
             {
-                // create char info entity
                 fontInfo.characters[i] = new CharacterGenerationInfo
                 {
                     fontInfo = fontInfo,
                     character = fntInf.CharInfos[i].Character,
-                    bitmapOriginal = fntInf.CharInfos[i].BitmapOriginal
+                    bitmapOriginal = fntInf.CharInfos[i].Bitmap,
+                    bitmapToGenerate = fntInf.CharInfos[i].Bitmap
                 };
             }
 
 
-            //
-            // iterate through all bitmaps and find the tightest common border. only perform
-            // this if the configuration specifies
-            //
-
-            // this will contain the values of the tightest border around the characters
-            BitmapBorder tightestCommonBorder = new BitmapBorder();
-
-            // only perform if padding type specifies
-            if (m_outputConfig.paddingRemovalHorizontal == OutputConfiguration.PaddingRemoval.Fixed ||
-                m_outputConfig.paddingRemovalVertical == OutputConfiguration.PaddingRemoval.Fixed)
-            {
-                // find the common tightest border
-                findTightestCommonBitmapBorder(fontInfo.characters, ref tightestCommonBorder);
-            }
-
-            //
-            // iterate thruogh all bitmaps and generate the bitmap we will convert to string
-            // this means performing all manipulation (pad remove, flip)
-            //
-
-            // iterate over characters
-            for (int charIdx = 0; charIdx < fontInfo.generatedChars.Length; ++charIdx)
-            {
-                // generate the original bitmap for the character
-                manipulateBitmap(fontInfo.characters[charIdx].bitmapOriginal,
-                                 tightestCommonBorder,
-                                 out fontInfo.characters[charIdx].bitmapToGenerate,
-                                 m_outputConfig.spaceGenerationPixels,
-                                 fontInfo.characters[charIdx].bitmapOriginal.Height);
-
-                // for debugging
-                // fontInfo.characters[charIdx].bitmapToGenerate.Save(String.Format("C:/bms/{0}_cropped.bmp", fontInfo.characters[charIdx].character));
-            }
 
             //
             // iterate through all characters and create the page array

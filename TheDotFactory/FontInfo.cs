@@ -6,20 +6,23 @@ using TheDotFactory.Config;
 
 namespace TheDotFactory
 {
-    // We are here populating font info with the bitmaps, generating accordingly with a font, font size and a symbol.
-    // We can do this once using the FontInfo class ctor
-    // Input: source string, font, condition to generate space
-    // Iutput: FontInfo
-
-    public class FontInfo
+    /// <summary>
+    /// Represents all information we need about the font.
+    /// </summary>
+    public sealed class FontInfo
     {
+        /// <summary>
+        /// Initialize FontInfo instance based on source string and user configurations.
+        /// </summary>
+        /// <param name="srcStr">Source string.</param>
+        /// <param name="cfg">User output configurtion.</param>
         public FontInfo(String srcStr, OutputConfig cfg)
         {
             if (srcStr == null) throw new ArgumentNullException(nameof(srcStr));
             if (cfg == null) throw new ArgumentNullException(nameof(cfg));
             if (cfg.OutputFont == null) throw new ArgumentNullException(nameof(cfg));
 
-            // generate char info for each character in the string using the largest bitmap size we're going to draw.
+            // Generate char info for each character in the string using the largest bitmap size we're going to draw.
             var chrs = srcStr.ToCharArray()
                 .Distinct()
                 .Where(x => (cfg.SpaceGeneration || x != ' ') && x != '\n' && x != '\r')
@@ -27,13 +30,9 @@ namespace TheDotFactory
                 .ToArray();
             var charSizes = chrs.Select(x => TextRenderer.MeasureText(x.ToString(), cfg.OutputFont)).ToArray();
             var maxSize = new Size(charSizes.Max(x => x.Width), charSizes.Max(x => x.Height));
-            CharInfos = chrs.Select(x => new CharInfo(x, maxSize, cfg.OutputFont)).ToArray();
+            CharInfos = chrs.Select(x => new CharInfo(x, maxSize, cfg)).ToArray();
 
-            CropConfigurer(maxSize, cfg);
-        }
-
-        private void CropConfigurer(Size maxSize, OutputConfig cfg)
-        {
+            // Character clipping configuration.
             var left = 0;
             var right = maxSize.Width - 1;
 
@@ -76,11 +75,12 @@ namespace TheDotFactory
             var cropRect = new Rectangle(left, top, right - left, bottom - top);
 
             foreach (var charInfo in CharInfos)
-            {
                 charInfo.CropBitmap(cropRect, cropSyle);
-            }
         }
 
+        /// <summary>
+        /// Character info.
+        /// </summary>
         public CharInfo[] CharInfos { get; }
     }
 }

@@ -495,56 +495,6 @@ namespace TheDotFactory
             return true;
         }
 
-        // create the page array
-        private void convertBitmapToPageArray(Bitmap bitmapToGenerate, out ArrayList pages)
-        {
-            // create pages
-            pages = new ArrayList();
-
-            // for each row
-            for (int row = 0; row < bitmapToGenerate.Height; row++)
-            {
-                // current byte value
-                byte currentValue = 0, bitsRead = 0;
-
-                // for each column
-                for (int column = 0; column < bitmapToGenerate.Width; ++column) 
-                {
-                    // is pixel set?
-                    if (bitmapToGenerate.GetPixel(column, row).ToArgb() == Color.Black.ToArgb())
-                    {
-                        // set the appropriate bit in the page
-                        if (m_outputConfig.byteOrder == OutputConfiguration.ByteOrder.MsbFirst) currentValue |= (byte)(1 << (7 - bitsRead));
-                        else currentValue |= (byte)(1 << bitsRead);
-                    }
-
-                    // increment number of bits read
-                    ++bitsRead;
-
-                    // have we filled a page?
-                    if (bitsRead == 8)
-                    {
-                        // add byte to page array
-                        pages.Add(currentValue);
-
-                        // zero out current value
-                        currentValue = 0;
-
-                        // zero out bits read
-                        bitsRead = 0;
-                    }
-                }
-
-                // if we have bits left, add it as is
-                if (bitsRead != 0) pages.Add(currentValue);
-            }
-
-            // transpose the pages if column major data is requested
-            if (m_outputConfig.bitLayout == OutputConfiguration.BitLayout.ColumnMajor)
-            {
-                transposePageArray(bitmapToGenerate.Width, bitmapToGenerate.Height, pages, out pages);
-            }
-        }
 
         // get absolute height/width of characters
         private void getAbsoluteCharacterDimensions(ref Bitmap charBitmap, ref int width, ref int height)
@@ -631,7 +581,9 @@ namespace TheDotFactory
                 OutputFont = font,
                 HorizontalPaddingRemove = m_outputConfig.paddingRemovalVertical.ToPddRem(),
                 VerticalPaddingRemove = m_outputConfig.paddingRemovalHorizontal.ToPddRem(),
-                SpaceGeneration = m_outputConfig.generateSpaceCharacterBitmap
+                SpaceGeneration = m_outputConfig.generateSpaceCharacterBitmap,
+                ByteOrder = m_outputConfig.byteOrder.ToBord(),
+                BitLayout = m_outputConfig.bitLayout.ToBitLayout()
             };
 
             // Init our FontInfo.
@@ -654,25 +606,9 @@ namespace TheDotFactory
                     fontInfo = fontInfo,
                     character = fntInf.CharInfos[i].Character,
                     bitmapOriginal = fntInf.CharInfos[i].Bitmap,
-                    bitmapToGenerate = fntInf.CharInfos[i].Bitmap
+                    bitmapToGenerate = fntInf.CharInfos[i].Bitmap,
+                    pages = new ArrayList(fntInf.CharInfos[i].Pages)
                 };
-            }
-
-
-
-            //
-            // iterate through all characters and create the page array
-            //
-
-            // iterate over characters
-            for (int charIdx = 0; charIdx < fontInfo.generatedChars.Length; ++charIdx)
-            {
-                // check if bitmap exists
-                if (fontInfo.characters[charIdx].bitmapToGenerate != null)
-                {
-                    // create the page array for the character
-                    convertBitmapToPageArray(fontInfo.characters[charIdx].bitmapToGenerate, out fontInfo.characters[charIdx].pages);
-                }
             }
 
             // populate font info
@@ -757,41 +693,6 @@ namespace TheDotFactory
             return resultString.ToString();
         }
 
-        // generate an array of column major pages from row major pages
-        private void transposePageArray(int width, int height, ArrayList rowMajorPages, out ArrayList colMajorPages)
-        {
-            // column major data has a byte for each column representing 8 rows
-            int rowMajorPagesPerRow = (width + 7)/8;
-            int colMajorPagesPerRow = width;
-            int colMajorRowCount    = (height + 7)/8;
-
-            // create an array of pages filled with zeros for the column major data
-            colMajorPages = new ArrayList(colMajorPagesPerRow * colMajorRowCount);
-            for (int i = 0; i != colMajorPagesPerRow * colMajorRowCount; ++i)
-                colMajorPages.Add((byte)0);
-
-            // generate the column major data
-            for (int row = 0; row != height; ++row)
-            {
-                for (int col = 0; col != width; ++col)
-                {
-                    // get the byte containing the bit we want
-                    int srcIdx = row * rowMajorPagesPerRow + (col/8);
-                    int page = (byte)rowMajorPages[srcIdx];
-
-                    // get the bit mask for the bit we want
-                    int bitMask = getBitMask(7 - (col % 8));
-
-                    // set the bit in the column major data
-                    if ((page & bitMask) != 0)
-                    {
-                        int dstIdx = (row/8) * colMajorPagesPerRow + col;
-                        int p = (byte)colMajorPages[dstIdx];
-                        colMajorPages[dstIdx] = (byte)(p | getBitMask(row % 8));
-                    }
-                }
-            }
-        }
 
         // builds a string array of the data in 'pages'
         private void generateData(int width, int height, ArrayList pages, OutputConfiguration.BitLayout layout, out string[] data)
@@ -1462,6 +1363,17 @@ namespace TheDotFactory
         // generate the required output for image
         private void generateOutputForImage(ref Bitmap bitmapOriginal, ref string resultTextSource, ref string resultTextHeader)
         {
+
+            //Get necessary configurations.
+            var cfg = new OutputConfig
+            {
+                HorizontalPaddingRemove = m_outputConfig.paddingRemovalVertical.ToPddRem(),
+                VerticalPaddingRemove = m_outputConfig.paddingRemovalHorizontal.ToPddRem(),
+                SpaceGeneration = m_outputConfig.generateSpaceCharacterBitmap,
+                ByteOrder = m_outputConfig.byteOrder.ToBord(),
+                BitLayout = m_outputConfig.bitLayout.ToBitLayout()
+            };
+
             // the name of the bitmap
             string imageName = scrubVariableName(txtImageName.Text);
 
@@ -1526,7 +1438,7 @@ namespace TheDotFactory
                 ArrayList pages;
 
                 // first convert to pages
-                convertBitmapToPageArray(bitmapManipulated, out pages);
+                pages=new ArrayList(bitmapManipulated.ToPageArray(cfg));
 
                 // assign pages for fully populated 8 bits
                 int pagesPerRow = convertValueByDescriptorFormat(OutputConfiguration.DescriptorFormat.DisplayInBytes, bitmapManipulated.Width);

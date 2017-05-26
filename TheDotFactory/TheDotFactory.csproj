@@ -59,6 +59,9 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Design" />
+    <Reference Include="System.ValueTuple, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.3.1\lib\netstandard1.0\System.ValueTuple.dll</HintPath>
+    </Reference>
     <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -79,7 +82,10 @@
       <DependentUpon>AboutForm.cs</DependentUpon>
     </Compile>
     <Compile Include="BitmapHelpers.cs" />
+    <Compile Include="Config\BitLayout.cs" />
+    <Compile Include="Config\ByteOrder.cs" />
     <Compile Include="CharInfo.cs" />
+    <Compile Include="Config\Rotation.cs" />
     <Compile Include="CropStyle.cs" />
     <Compile Include="FontInfo.cs" />
     <Compile Include="InputBox.cs">
@@ -130,6 +136,7 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <None Include="app.config" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
